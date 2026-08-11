@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+out
+build
+dist
+coverage
+
+# Lockfiles and YAML (Prettier has no built-in YAML parser)
+pnpm-lock.yaml
+package-lock.json
+*.yaml
+*.yml
+
+# Assets
+public
+
+# Local reference doc that doesn't need formatting
+claude.json
