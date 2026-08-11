@@ -25,6 +25,7 @@ export default defineConfig({
         'src/server/**/*.ts',
         'src/features/**/services/**/*.{ts,tsx}',
         'src/features/**/validations.ts',
+        'src/features/trading/**/*.ts',
       ],
       exclude: ['src/**/*.d.ts', '**/*.test.{ts,tsx}'],
     },
