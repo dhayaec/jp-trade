@@ -611,7 +611,7 @@ Additionally:
 - [ ] Dashboard renders candlestick chart, pattern cards, screening table
 - [x] Trade logging with P&L tracking
 - [x] Risk management enforced (1% per trade, 3 max/day, 2% daily halt)
-- [ ] Backtesting framework validates pattern accuracy on historical data
+- [x] Backtesting framework validates pattern accuracy on historical data
 - [ ] All quality gates pass: lint, type-check, test, build, E2E
 - [ ] No `any` types, no `console.log`, no unvalidated inputs
 
