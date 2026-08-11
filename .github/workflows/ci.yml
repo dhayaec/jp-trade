@@ -86,6 +86,9 @@ jobs:
         with:
           name: build
           path: .next/
+          # upload-artifact excludes dot-directories by default (@actions/glob
+          # skips basenames starting with ".") — `.next/` would upload nothing.
+          include-hidden-files: true
 
   e2e:
     name: Playwright E2E
