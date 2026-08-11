@@ -37,6 +37,9 @@ jobs:
           # Placeholder only — `prisma validate` never connects to a database.
           DATABASE_URL: postgresql://user:pass@localhost:5432/ci
 
+      - name: Prisma generate
+        run: pnpm prisma generate
+
       - name: Lint
         run: pnpm lint
 
