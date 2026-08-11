@@ -76,6 +76,30 @@ export const tradeCreateSchema = z.object({
   pattern: z.string().trim().min(1, 'pattern is required'),
   strategy: z.string().trim().min(1, 'strategy is required'),
   notes: z.string().optional(),
+  /**
+   * Account equity used to enforce the 1% risk cap and 2% daily-loss halt.
+   * Required by the Phase 6 risk engine.
+   */
+  accountEquity: z.number().positive(),
+});
+
+// ---------------------------------------------------------------------------
+// /api/trades/:id — update (PATCH) and close (PATCH with exitPrice)
+// ---------------------------------------------------------------------------
+
+export const tradeUpdateSchema = z
+  .object({
+    stopLoss: z.number().positive().optional(),
+    takeProfit: z.number().positive().optional(),
+    notes: z.string().optional(),
+  })
+  .refine((v) => v.stopLoss !== undefined || v.takeProfit !== undefined || v.notes !== undefined, {
+    message: 'at least one of stopLoss, takeProfit, notes is required',
+  });
+
+export const tradeCloseSchema = z.object({
+  exitPrice: z.number().positive(),
+  status: z.enum(['CLOSED', 'STOPPED']).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -88,3 +112,5 @@ export type SetupQuery = z.infer<typeof setupQuerySchema>;
 export type ScreenQuery = z.infer<typeof screenQuerySchema>;
 export type TradeQuery = z.infer<typeof tradeQuerySchema>;
 export type TradeCreate = z.infer<typeof tradeCreateSchema>;
+export type TradeUpdate = z.infer<typeof tradeUpdateSchema>;
+export type TradeClose = z.infer<typeof tradeCloseSchema>;

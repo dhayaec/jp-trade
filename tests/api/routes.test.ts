@@ -14,7 +14,13 @@ import { NextRequest } from 'next/server';
 const mockPrisma = {
   candle: { findMany: vi.fn() },
   stockSymbol: { findMany: vi.fn() },
-  trade: { findMany: vi.fn(), create: vi.fn() },
+  trade: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
 };
 
 vi.mock('@/server/db', () => ({
@@ -28,6 +34,7 @@ import { GET as patternsGET } from '@/app/api/patterns/route';
 import { GET as setupGET } from '@/app/api/setup/route';
 import { GET as screenGET } from '@/app/api/screen/route';
 import { GET as tradesGET, POST as tradesPOST } from '@/app/api/trades/route';
+import { PATCH as tradesPATCH } from '@/app/api/trades/[id]/route';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -126,6 +133,22 @@ function jsonResponse(res: Response): Promise<Record<string, unknown>> {
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+/** Valid POST /api/trades body (accountEquity required by the risk engine). */
+function tradeCreateBody(overrides: Record<string, unknown> = {}) {
+  return {
+    symbol: 'TCS',
+    position: 'LONG',
+    entry: 100,
+    stopLoss: 95,
+    takeProfit: 110,
+    quantity: 10,
+    pattern: 'MARUBOZU',
+    strategy: 'SWING',
+    accountEquity: 100_000,
+    ...overrides,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Shared setup
 // ---------------------------------------------------------------------------
@@ -135,6 +158,11 @@ beforeEach(() => {
   mockPrisma.candle.findMany.mockResolvedValue(CANDLE_ROWS);
   mockPrisma.stockSymbol.findMany.mockResolvedValue([{ symbol: 'AAA' }, { symbol: 'BBB' }]);
   mockPrisma.trade.findMany.mockResolvedValue([TRADE_ROW]);
+  mockPrisma.trade.count.mockResolvedValue(0);
+  mockPrisma.trade.findUnique.mockResolvedValue(TRADE_ROW);
+  mockPrisma.trade.update.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+    Promise.resolve({ ...TRADE_ROW, ...data })
+  );
   mockPrisma.trade.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     Promise.resolve({ ...TRADE_ROW, ...data, id: 'trade_new' })
   );
@@ -384,6 +412,7 @@ describe('POST /api/trades', () => {
           quantity: 10,
           pattern: 'MARUBOZU',
           strategy: 'SWING',
+          accountEquity: 100_000,
         }),
       })
     );
@@ -432,5 +461,116 @@ describe('POST /api/trades', () => {
     );
     expect(res.status).toBe(400);
     expect((await jsonResponse(res)).error).toContain('Invalid JSON');
+  });
+
+  it('rejects a body missing accountEquity', async () => {
+    const withoutEquity = { ...tradeCreateBody() };
+    delete withoutEquity.accountEquity;
+    const res = await tradesPOST(
+      makeRequest('http://localhost:3000/api/trades', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(withoutEquity),
+      })
+    );
+    expect(res.status).toBe(400);
+    expect((await jsonResponse(res)).error).toContain('accountEquity');
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when a risk limit blocks the trade', async () => {
+    mockPrisma.trade.count.mockResolvedValue(3); // max active trades reached
+
+    const res = await tradesPOST(
+      makeRequest('http://localhost:3000/api/trades', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(tradeCreateBody()),
+      })
+    );
+    expect(res.status).toBe(409);
+    expect((await jsonResponse(res)).reason).toBe('MAX_ACTIVE_TRADES');
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the quantity exceeds the 1% risk cap', async () => {
+    const res = await tradesPOST(
+      makeRequest('http://localhost:3000/api/trades', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(tradeCreateBody({ quantity: 999 })),
+      })
+    );
+    expect(res.status).toBe(400);
+    expect((await jsonResponse(res)).error).toContain('exceeds the 1% risk cap');
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/trades/:id — update risk fields or close
+// ---------------------------------------------------------------------------
+
+describe('PATCH /api/trades/:id', () => {
+  const patch = (id: string, body: unknown) =>
+    tradesPATCH(
+      makeRequest(`http://localhost:3000/api/trades/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id }) }
+    );
+
+  it('updates the stop loss on an open trade', async () => {
+    const res = await patch('trade_1', { stopLoss: 105 });
+    expect(res.status).toBe(200);
+
+    expect(mockPrisma.trade.update).toHaveBeenCalledWith({
+      where: { id: 'trade_1' },
+      data: { stopLoss: 105 },
+    });
+  });
+
+  it('clamps a stop below breakeven up to entry', async () => {
+    // TRADE_ROW entry is 100; a LONG stop of 92 must snap to 100.
+    const res = await patch('trade_1', { stopLoss: 92 });
+    expect(res.status).toBe(200);
+
+    expect(mockPrisma.trade.update).toHaveBeenCalledWith({
+      where: { id: 'trade_1' },
+      data: { stopLoss: 100 },
+    });
+  });
+
+  it('closes the trade and returns the computed P&L', async () => {
+    const res = await patch('trade_1', { exitPrice: 110 });
+    expect(res.status).toBe(200);
+
+    const body = await jsonResponse(res);
+    // (110 − 100) × 10 = +100; mock resolves TRADE_ROW spread with data.
+    expect(body.data).toEqual(
+      expect.objectContaining({ status: 'CLOSED', exitPrice: 110, pnl: 100 })
+    );
+  });
+
+  it('returns 404 for an unknown trade', async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(null);
+    const res = await patch('missing', { stopLoss: 105 });
+    expect(res.status).toBe(404);
+    expect((await jsonResponse(res)).error).toContain('Trade not found');
+  });
+
+  it('returns 400 when the trade is not open', async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue({ ...TRADE_ROW, status: 'CLOSED' });
+    const res = await patch('trade_1', { stopLoss: 105 });
+    expect(res.status).toBe(400);
+    expect((await jsonResponse(res)).error).toContain('is not open');
+  });
+
+  it('returns 400 for an invalid body', async () => {
+    const res = await patch('trade_1', {});
+    expect(res.status).toBe(400);
+    expect(mockPrisma.trade.findUnique).not.toHaveBeenCalled();
   });
 });

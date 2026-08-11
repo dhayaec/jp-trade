@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { openTrade, TradeError, TradeLimitError } from '@/features/trading/actions';
 import { getPrisma } from '@/server/db';
 import { tradeQuerySchema, tradeCreateSchema } from '@/server/validators';
 import { serializeTrade } from '@/server/serializers';
@@ -32,11 +33,12 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/trades — log a paper/live trade.
+ * POST /api/trades — log a paper/live trade with risk enforcement.
  *
  * Body (JSON): `symbol`, `position`, `entry`, `stopLoss`, `takeProfit`,
- * `quantity`, `pattern`, `strategy`, optional `notes`. Returns the created trade
- * with status 201.
+ * `quantity`, `pattern`, `strategy`, `accountEquity`, optional `notes`.
+ * Enforces max active trades, daily-loss halt, and the 1% risk cap.
+ * Returns the created trade with status 201.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -51,26 +53,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const { symbol, position, entry, stopLoss, takeProfit, quantity, pattern, strategy, notes } =
-    parsed.data;
+  // `notes` is optional; spread it only when present so the draft satisfies
+  // `exactOptionalPropertyTypes` (no explicit `undefined` on an optional field).
+  const { accountEquity, notes, ...tradeDraft } = parsed.data;
 
   try {
-    const trade = await getPrisma().trade.create({
-      data: {
-        symbol,
-        position,
-        entry,
-        stopLoss,
-        takeProfit,
-        quantity,
-        pattern,
-        strategy,
-        notes: notes ?? null,
-      },
-    });
-
+    const trade = await openTrade(
+      { ...tradeDraft, ...(notes !== undefined ? { notes } : {}) },
+      { accountEquity }
+    );
     return NextResponse.json({ data: serializeTrade(trade) }, { status: 201 });
   } catch (error) {
+    if (error instanceof TradeLimitError) {
+      return NextResponse.json({ error: error.message, reason: error.reason }, { status: 409 });
+    }
+    if (error instanceof TradeError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Failed to create trade:', error);
     return NextResponse.json({ error: 'Failed to create trade' }, { status: 500 });
   }
