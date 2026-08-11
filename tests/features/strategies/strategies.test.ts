@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Candle, TradingSetup } from '@/features/candlestick/types';
 import { detectLiquiditySweep } from '@/features/strategies/liquidity-sweep';
 import { detectFairValueGap } from '@/features/strategies/fair-value-gap';
+import { expectDefined } from '../../helpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,15 +32,14 @@ describe('detectLiquiditySweep', () => {
       candle(9, 105, 110, 100, 100), // sweep + bearish engulfing
     ];
 
-    const setup = detectLiquiditySweep(candles);
-    expect(setup).not.toBeNull();
-    expect(setup!.strategy).toBe('LIQUIDITY_SWEEP');
-    expect(setup!.signal).toBe('SELL');
-    expect(setup!.entry).toBe(100);
-    expect(setup!.stopLoss).toBeCloseTo(110 * 1.005);
-    expect(setup!.takeProfit).toBeCloseTo(100 - 10.55 * 2);
-    expect(setup!.riskReward).toBe(2);
-    expect(setup!.patterns).toEqual(['SANSEN', 'LIQUIDITY_SWEEP', 'TSUTSUMI']);
+    const setup = expectDefined(detectLiquiditySweep(candles));
+    expect(setup.strategy).toBe('LIQUIDITY_SWEEP');
+    expect(setup.signal).toBe('SELL');
+    expect(setup.entry).toBe(100);
+    expect(setup.stopLoss).toBeCloseTo(110 * 1.005);
+    expect(setup.takeProfit).toBeCloseTo(100 - 10.55 * 2);
+    expect(setup.riskReward).toBe(2);
+    expect(setup.patterns).toEqual(['SANSEN', 'LIQUIDITY_SWEEP', 'TSUTSUMI']);
   });
 
   it('detects a BUY setup when a downtrend sweeps below a recent low and rejects', () => {
@@ -55,12 +55,11 @@ describe('detectLiquiditySweep', () => {
       candle(9, 92, 103, 88, 100), // sweep + bullish engulfing
     ];
 
-    const setup = detectLiquiditySweep(candles);
-    expect(setup).not.toBeNull();
-    expect(setup!.signal).toBe('BUY');
-    expect(setup!.entry).toBe(100);
-    expect(setup!.stopLoss).toBeCloseTo(88 * 0.995);
-    expect(setup!.takeProfit).toBeCloseTo(100 + (100 - 88 * 0.995) * 2);
+    const setup = expectDefined(detectLiquiditySweep(candles));
+    expect(setup.signal).toBe('BUY');
+    expect(setup.entry).toBe(100);
+    expect(setup.stopLoss).toBeCloseTo(88 * 0.995);
+    expect(setup.takeProfit).toBeCloseTo(100 + (100 - 88 * 0.995) * 2);
   });
 
   it('returns null when there is no sweep through the recent extreme', () => {
@@ -108,9 +107,8 @@ describe('detectLiquiditySweep', () => {
       candle(9, 105, 110, 100, 100),
     ];
 
-    const setup = detectLiquiditySweep(candles, { lookback: 3 });
-    expect(setup).not.toBeNull();
-    expect(setup!.signal).toBe('SELL');
+    const setup = expectDefined(detectLiquiditySweep(candles, { lookback: 3 }));
+    expect(setup.signal).toBe('SELL');
   });
 
   it('returns null with insufficient candles', () => {
@@ -138,15 +136,14 @@ describe('detectFairValueGap', () => {
       candle(5, 110, 115, 111, 114), // rising line 3 — gaps above line 1
     ];
 
-    const setup = detectFairValueGap(candles);
-    expect(setup).not.toBeNull();
-    expect(setup!.strategy).toBe('FAIR_VALUE_GAP');
-    expect(setup!.signal).toBe('BUY');
-    expect(setup!.entry).toBe(114);
-    expect(setup!.stopLoss).toBeCloseTo(100 * 0.995);
-    expect(setup!.takeProfit).toBeCloseTo(114 + (114 - 100 * 0.995) * 2);
-    expect(setup!.riskReward).toBe(2);
-    expect(setup!.patterns).toEqual(['TONKACHI', 'SANPEI_AGE', 'FVG']);
+    const setup = expectDefined(detectFairValueGap(candles));
+    expect(setup.strategy).toBe('FAIR_VALUE_GAP');
+    expect(setup.signal).toBe('BUY');
+    expect(setup.entry).toBe(114);
+    expect(setup.stopLoss).toBeCloseTo(100 * 0.995);
+    expect(setup.takeProfit).toBeCloseTo(114 + (114 - 100 * 0.995) * 2);
+    expect(setup.riskReward).toBe(2);
+    expect(setup.patterns).toEqual(['TONKACHI', 'SANPEI_AGE', 'FVG']);
   });
 
   it('detects a SELL setup after a shooting star at a high followed by three declining lines with a gap', () => {
@@ -158,12 +155,11 @@ describe('detectFairValueGap', () => {
       candle(5, 102, 102.5, 97, 98), // declining line 3 — gaps below line 1
     ];
 
-    const setup = detectFairValueGap(candles);
-    expect(setup).not.toBeNull();
-    expect(setup!.signal).toBe('SELL');
-    expect(setup!.entry).toBe(98);
-    expect(setup!.stopLoss).toBeCloseTo(112 * 1.005);
-    expect(setup!.takeProfit).toBeCloseTo(98 - (112 * 1.005 - 98) * 2);
+    const setup = expectDefined(detectFairValueGap(candles));
+    expect(setup.signal).toBe('SELL');
+    expect(setup.entry).toBe(98);
+    expect(setup.stopLoss).toBeCloseTo(112 * 1.005);
+    expect(setup.takeProfit).toBeCloseTo(98 - (112 * 1.005 - 98) * 2);
   });
 
   it('returns null when the advance leaves no fair value gap', () => {
@@ -211,11 +207,11 @@ describe('strategy return type', () => {
     ];
 
     const setup: TradingSetup | null = detectFairValueGap(candles);
-    expect(setup).not.toBeNull();
-    expect(setup!.entry).toBeGreaterThan(0);
-    expect(setup!.stopLoss).toBeLessThan(setup!.entry);
-    expect(setup!.takeProfit).toBeGreaterThan(setup!.entry);
-    expect(setup!.confidence).toBeGreaterThan(0);
-    expect(setup!.patterns.length).toBeGreaterThan(0);
+    const sig = expectDefined(setup);
+    expect(sig.entry).toBeGreaterThan(0);
+    expect(sig.stopLoss).toBeLessThan(sig.entry);
+    expect(sig.takeProfit).toBeGreaterThan(sig.entry);
+    expect(sig.confidence).toBeGreaterThan(0);
+    expect(sig.patterns.length).toBeGreaterThan(0);
   });
 });

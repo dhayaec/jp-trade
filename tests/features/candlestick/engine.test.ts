@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CandlestickPatternEngine } from '@/features/candlestick/engine';
 import type { Candle } from '@/features/candlestick/types';
+import { expectDefined } from '../../helpers';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,19 +66,17 @@ describe('CandlestickPatternEngine', () => {
   describe('detectMarubozu', () => {
     it('detects a bullish marubozu', () => {
       const engine = makeEngine([candle(100, 105, 100, 104.8)]);
-      const sig = engine.detectMarubozu();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('MARUBOZU');
-      expect(sig!.signal).toBe('BUY');
-      expect(sig!.confidence).toBe(0.75);
-      expect(sig!.entry).toBe(104.8);
+      const sig = expectDefined(engine.detectMarubozu());
+      expect(sig.pattern).toBe('MARUBOZU');
+      expect(sig.signal).toBe('BUY');
+      expect(sig.confidence).toBe(0.75);
+      expect(sig.entry).toBe(104.8);
     });
 
     it('detects a bearish marubozu', () => {
       const engine = makeEngine([candle(105, 105, 100, 100.2)]);
-      const sig = engine.detectMarubozu();
-      expect(sig).not.toBeNull();
-      expect(sig!.signal).toBe('SELL');
+      const sig = expectDefined(engine.detectMarubozu());
+      expect(sig.signal).toBe('SELL');
     });
 
     it('returns null for a candle with long wicks', () => {
@@ -105,11 +104,10 @@ describe('CandlestickPatternEngine', () => {
         bearishCandle(110, 105), // prev: bearish
         candle(100, 101.5, 96, 101, 1_000), // current: small body=1, lower wick=4
       ]);
-      const sig = engine.detectTonkachi();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('TONKACHI');
-      expect(sig!.signal).toBe('BUY');
-      expect(sig!.confidence).toBe(0.8);
+      const sig = expectDefined(engine.detectTonkachi());
+      expect(sig.pattern).toBe('TONKACHI');
+      expect(sig.signal).toBe('BUY');
+      expect(sig.confidence).toBe(0.8);
     });
 
     it('returns null when previous candle is bullish', () => {
@@ -135,11 +133,10 @@ describe('CandlestickPatternEngine', () => {
         bullishCandle(105), // prev: bullish
         candle(105, 109, 104, 104, 1_000), // body=1, upperWick=4
       ]);
-      const sig = engine.detectNagareboshi();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('NAGAREBOSHI');
-      expect(sig!.signal).toBe('SELL');
-      expect(sig!.confidence).toBe(0.8);
+      const sig = expectDefined(engine.detectNagareboshi());
+      expect(sig.pattern).toBe('NAGAREBOSHI');
+      expect(sig.signal).toBe('SELL');
+      expect(sig.confidence).toBe(0.8);
     });
 
     it('returns null when previous candle is bearish', () => {
@@ -165,11 +162,10 @@ describe('CandlestickPatternEngine', () => {
         bearishCandle(105, 100), // prev: 105→100, body=5
         candle(99, 106, 98.5, 106, 1_000), // current: 99→106, body=7
       ]);
-      const sig = engine.detectTsutsumi();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('TSUTSUMI');
-      expect(sig!.signal).toBe('BUY');
-      expect(sig!.confidence).toBe(0.8);
+      const sig = expectDefined(engine.detectTsutsumi());
+      expect(sig.pattern).toBe('TSUTSUMI');
+      expect(sig.signal).toBe('BUY');
+      expect(sig.confidence).toBe(0.8);
     });
 
     it('detects a bearish engulfing', () => {
@@ -177,9 +173,8 @@ describe('CandlestickPatternEngine', () => {
         bullishCandle(105, 99, 106, 100), // prev: 100→105, body=5
         candle(106, 107, 98, 99, 1_000), // current: 106→99, body=7
       ]);
-      const sig = engine.detectTsutsumi();
-      expect(sig).not.toBeNull();
-      expect(sig!.signal).toBe('SELL');
+      const sig = expectDefined(engine.detectTsutsumi());
+      expect(sig.signal).toBe('SELL');
     });
 
     it('returns null when current body is smaller than previous', () => {
@@ -201,12 +196,11 @@ describe('CandlestickPatternEngine', () => {
         candle(100, 110, 100, 110, 1_000), // prev: bullish body 100–110
         candle(103, 107, 103, 107, 1_000), // current: inside 103–107
       ]);
-      const sig = engine.detectHarami();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('HARAMI');
-      expect(sig!.type).toBe('CONTINUATION');
-      expect(sig!.signal).toBe('NEUTRAL');
-      expect(sig!.confidence).toBe(0.6);
+      const sig = expectDefined(engine.detectHarami());
+      expect(sig.pattern).toBe('HARAMI');
+      expect(sig.type).toBe('CONTINUATION');
+      expect(sig.signal).toBe('NEUTRAL');
+      expect(sig.confidence).toBe(0.6);
     });
 
     it('returns null when current body is not inside previous', () => {
@@ -225,13 +219,12 @@ describe('CandlestickPatternEngine', () => {
   describe('detectDoji', () => {
     it('detects a doji with tiny body', () => {
       const engine = makeEngine([candle(100, 105, 95, 100.2, 1_000)]);
-      const sig = engine.detectDoji();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('DOJI');
-      expect(sig!.type).toBe('INDECISION');
+      const sig = expectDefined(engine.detectDoji());
+      expect(sig.pattern).toBe('DOJI');
+      expect(sig.type).toBe('INDECISION');
       // RSI of a single candle returns 50 → NEUTRAL
-      expect(sig!.signal).toBe('NEUTRAL');
-      expect(sig!.confidence).toBe(0.5);
+      expect(sig.signal).toBe('NEUTRAL');
+      expect(sig.confidence).toBe(0.5);
     });
 
     it('returns null when body is not tiny', () => {
@@ -258,14 +251,13 @@ describe('CandlestickPatternEngine', () => {
       const c5: Candle = { timestamp: 5, open: 9.4, high: 10.3, low: 9, close: 10, volume: 1 };
 
       const engine = makeEngine([c1, c2, c3, c4, c5]);
-      const sig = engine.detectSakataFive();
-      expect(sig).not.toBeNull();
-      expect(sig!.pattern).toBe('SAKATA_FIVE');
-      expect(sig!.signal).toBe('BUY');
-      expect(sig!.confidence).toBe(0.85);
-      expect(sig!.entry).toBe(10);
-      expect(sig!.stopLoss).toBeCloseTo(9 * 0.995);
-      expect(sig!.takeProfit).toBeCloseTo(12 * 1.02);
+      const sig = expectDefined(engine.detectSakataFive());
+      expect(sig.pattern).toBe('SAKATA_FIVE');
+      expect(sig.signal).toBe('BUY');
+      expect(sig.confidence).toBe(0.85);
+      expect(sig.entry).toBe(10);
+      expect(sig.stopLoss).toBeCloseTo(9 * 0.995);
+      expect(sig.takeProfit).toBeCloseTo(12 * 1.02);
     });
 
     it('returns null with fewer than 5 candles', () => {

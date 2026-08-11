@@ -27,6 +27,12 @@ const eslintConfig = defineConfig([
       'no-debugger': 'error',
     },
   },
+  {
+    // Standalone CLI tooling may print to stdout/stderr like any script.
+    name: 'project/scripts',
+    files: ['scripts/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     '.next/**',
