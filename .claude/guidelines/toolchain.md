@@ -33,15 +33,15 @@ pnpm dev         # development server
 
 1. **Editor (on save)** — VS Code runs Prettier + ESLint fix-on-save
    (`.vscode/settings.json`).
-2. **Pre-commit** — Husky runs `lint-staged`: Prettier + ESLint `--fix` on
-   staged files only. Type-check is deliberately left to pre-push/CI (per-file
-   `tsc` is slow and not project-scoped).
+2. **Pre-commit** — Husky runs `lint-staged`: **Prettier only** on staged files.
+   ESLint runs in CI and pre-push — it's too slow for the commit path.
 3. **Commit message** — Husky's `commit-msg` hook runs commitlint
    (`.commitlintrc.js`).
 4. **Pre-push** — Husky's `pre-push` hook runs `pnpm type-check`.
-5. **CI** — `.github/workflows/ci.yml` runs the full gate on push to `main` and
-   every PR: lint → type-check → test (with coverage) → build, plus a Playwright
-   E2E job. Concurrency cancels superseded runs.
+5. **CI** — `.github/workflows/ci.yml` runs on push to `main` and every PR:
+   `quality` (lint → type-check → test) and `build` run in parallel, then `e2e`
+   (Playwright against the build artifact), then a `gate` job that depends on
+   all three. Branch protection requires the `gate` status check.
 
 ## Tests
 
