@@ -16,15 +16,17 @@ pnpm start       # run the production build
 Quality gates — all must pass before merging:
 
 ```bash
-pnpm lint          # ESLint (flat config)
-pnpm type-check    # tsc --noEmit
+pnpm lint          # ESLint (flat config) — CI only
+pnpm type-check    # tsc --noEmit — pre-push hook + CI
 pnpm test          # Vitest unit tests
 pnpm test:coverage # Vitest with v8 coverage
-pnpm test:e2e      # Playwright (requires `pnpm build` first)
+pnpm test:e2e      # Playwright — CI only (requires `pnpm build` first)
 ```
 
-CI runs lint → type-check → test → build on every push to `main` and PR
-(`.github/workflows/ci.yml`).
+CI (`.github/workflows/ci.yml`) runs `quality` (lint → type-check → test) and
+`build` in parallel, then `e2e` against the uploaded build artifact, then a
+`gate` job that depends on all three. Set branch protection on the `gate` status
+check to require all jobs to pass.
 
 ## Git workflow
 
