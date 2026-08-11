@@ -1,0 +1,38 @@
+# Local dev infrastructure for jp-trade.
+#   docker compose up -d
+# Then point DATABASE_URL / REDIS_URL in `.env` at these services (see .env.example).
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: jp-trade-postgres
+    environment:
+      POSTGRES_USER: jp_trade
+      POSTGRES_PASSWORD: jp_trade_dev
+      POSTGRES_DB: jp_trade
+    ports:
+      - '5432:5432'
+    volumes:
+      - jp_trade_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jp_trade -d jp_trade']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jp-trade-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - jp_trade_redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  jp_trade_pgdata:
+  jp_trade_redisdata:

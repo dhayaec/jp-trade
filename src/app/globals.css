@@ -1,1 +1,9 @@
 @import 'tailwindcss';
+
+/* Class-based dark mode: `dark:` utilities key off `html.dark`.
+   The trading app is default-dark — layout.tsx sets className="dark". */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: dark;
+}

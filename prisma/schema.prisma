@@ -1,8 +1,8 @@
-// Placeholder schema — replace with your data model. Runs `pnpm prisma validate`
-// in CI, which only validates the schema, never a live database. Prisma 7 keeps
-// connection URLs out of the schema: the Migrate URL lives in prisma.config.ts
-// (datasource.url), and PrismaClient must be constructed with a driver `adapter`
-// (or `accelerateUrl` for Accelerate) — see https://pris.ly/d/config-datasource.
+// Trading domain schema — Japanese candlestick pattern app for NSE.
+// `prisma validate` (CI) only validates this file, never a live database.
+// Prisma 7 keeps connection URLs out of the schema: the Migrate URL lives in
+// prisma.config.ts (datasource.url), and PrismaClient must be constructed with
+// a driver `adapter` (see src/server/db.ts) — https://pris.ly/d/config-datasource.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,10 +12,80 @@ datasource db {
   provider = "postgresql"
 }
 
-model User {
+/// OHLCV candle data — unique per (symbol, timeframe, timestamp)
+model Candle {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  symbol    String
+  timeframe String // "1m", "5m", "15m", "1h", "1d"
+  timestamp DateTime
+  open      Decimal  @db.Decimal(12, 4)
+  high      Decimal  @db.Decimal(12, 4)
+  low       Decimal  @db.Decimal(12, 4)
+  close     Decimal  @db.Decimal(12, 4)
+  volume    BigInt
+
+  createdAt DateTime @default(now())
+
+  @@unique([symbol, timeframe, timestamp])
+  @@index([symbol, timestamp(sort: Desc)])
+  @@map("candles")
+}
+
+/// Detected candlestick pattern signal
+model PatternSignal {
+  id         String   @id @default(cuid())
+  symbol     String
+  pattern    String // "MARUBOZU", "TONKACHI", "NAGAREBOSHI", etc.
+  signal     String // "BUY", "SELL", "NEUTRAL"
+  type       String // "REVERSAL", "CONTINUATION", "INDECISION"
+  confidence Decimal  @db.Decimal(4, 3) // 0.000 - 1.000
+  entry      Decimal? @db.Decimal(12, 4)
+  stopLoss   Decimal? @db.Decimal(12, 4)
+  takeProfit Decimal? @db.Decimal(12, 4)
+  timeframe  String
+  timestamp  DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([symbol, createdAt(sort: Desc)])
+  @@index([pattern, confidence(sort: Desc)])
+  @@map("pattern_signals")
+}
+
+/// Logged trade (paper or live)
+model Trade {
+  id         String   @id @default(cuid())
+  symbol     String
+  position   String // "LONG", "SHORT"
+  entry      Decimal  @db.Decimal(12, 4)
+  stopLoss   Decimal  @db.Decimal(12, 4)
+  takeProfit Decimal  @db.Decimal(12, 4)
+  quantity   Int
+  pattern    String
+  strategy   String
+  status     String   @default("OPEN") // "OPEN", "CLOSED", "STOPPED"
+  exitPrice  Decimal? @db.Decimal(12, 4)
+  pnl        Decimal? @db.Decimal(12, 4)
+  notes      String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  closedAt  DateTime?
+
+  @@index([status])
+  @@index([symbol, createdAt(sort: Desc)])
+  @@map("trades")
+}
+
+/// Stock universe for screening
+model StockSymbol {
+  id        String   @id @default(cuid())
+  symbol    String   @unique
+  name      String
+  exchange  String   @default("NSE")
+  sector    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("stock_symbols")
 }
