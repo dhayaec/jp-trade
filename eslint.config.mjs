@@ -28,9 +28,10 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Standalone CLI tooling may print to stdout/stderr like any script.
+    // Standalone CLI tooling may print to stdout/stderr like any script
+    // (historical-data importer + `prisma db seed`).
     name: 'project/scripts',
-    files: ['scripts/**/*.ts'],
+    files: ['scripts/**/*.ts', 'prisma/seed.ts'],
     rules: { 'no-console': 'off' },
   },
   globalIgnores([

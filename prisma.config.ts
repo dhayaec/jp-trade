@@ -13,5 +13,8 @@ export default defineConfig({
   },
   migrations: {
     path: 'prisma/migrations',
+    // Seed command run by `prisma db seed` / `pnpm db:seed`. `node --import tsx`
+    // resolves the tsx loader from node_modules without relying on PATH.
+    seed: 'node --import tsx prisma/seed.ts',
   },
 });
