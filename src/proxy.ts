@@ -23,7 +23,8 @@ export function proxy(request: NextRequest) {
   }
 
   const nonce = crypto.randomUUID();
-  const csp = buildCspPolicy(nonce);
+  const isDev = process.env.NODE_ENV !== 'production';
+  const csp = buildCspPolicy(nonce, isDev);
 
   // Set both the `x-nonce` request header *and* the CSP on the request: Next.js
   // parses the nonce out of the request's CSP header during SSR and applies it
