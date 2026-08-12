@@ -27,5 +27,8 @@ export default defineConfig({
     // silently reused and hung a request. Error loudly instead.
     reuseExistingServer: false,
     timeout: 120_000,
+    // Tighten the /api/screen budget so the rate-limit test can trip it with a
+    // handful of requests (each request 500s on a missing DB in CI).
+    env: { RATE_LIMIT_SCREEN_MAX: '5' },
   },
 });
