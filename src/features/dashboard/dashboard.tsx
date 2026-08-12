@@ -10,6 +10,7 @@ import { CandlestickChart } from './candlestick-chart';
 import { Controls } from './controls';
 import { PatternCardList } from './pattern-card';
 import { ScreeningTable } from './screening-table';
+import { Skeleton } from './skeleton';
 import { StrategyCardList } from './strategy-card';
 
 /**
@@ -95,7 +96,14 @@ function DashboardPanel({ symbol, timeframe }: { symbol: string; timeframe: Time
   return (
     <>
       {state.status === 'loading' && (
-        <p className="py-16 text-center text-sm text-slate-500">Loading market data…</p>
+        <div className="space-y-6">
+          <Skeleton className="h-64 w-full" />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
+          <Skeleton className="h-40 w-full" />
+        </div>
       )}
 
       {state.status === 'error' && (

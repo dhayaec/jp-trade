@@ -5,6 +5,7 @@ import type { TradeResponse } from '@/server/serializers';
 import { cn } from '@/lib/utils';
 import { formatPrice, formatTimestamp } from './format';
 import { fetchTrades, type TradeStatus } from './api';
+import { Skeleton } from './skeleton';
 
 /**
  * Trade log with status tabs.  Fetched client-side so E2E can intercept via
@@ -85,7 +86,20 @@ function TradeLogPanel({ tab }: { tab: TradeStatus }) {
   return (
     <>
       {state.status === 'loading' && (
-        <p className="py-16 text-center text-sm text-slate-500">Loading trades…</p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/40">
+          <div className="grid grid-cols-9 gap-4 border-b border-slate-800 p-3">
+            {['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'].map((k) => (
+              <Skeleton key={k} className="h-3" />
+            ))}
+          </div>
+          {['r1', 'r2', 'r3'].map((row) => (
+            <div key={row} className="grid grid-cols-9 gap-4 border-b border-slate-800/60 p-3">
+              {['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'].map((k) => (
+                <Skeleton key={k} className="h-4" />
+              ))}
+            </div>
+          ))}
+        </div>
       )}
 
       {state.status === 'error' && (
