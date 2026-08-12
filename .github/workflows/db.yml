@@ -1,0 +1,48 @@
+name: Database
+
+# Applies pending schema migrations and re-runs the idempotent seed against the
+# shared PostgreSQL instance (e.g. Neon). Runs on merge to main and on demand —
+# NOT on pull requests, so an arbitrary PR can't mutate the shared database.
+#
+# Requires a `DATABASE_URL` repository/actions secret pointing at the target
+# database (same value as `.env`). `prisma migrate deploy` only applies pending
+# migrations, and `prisma db seed` is safe to re-run (upserts + skipDuplicates).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-seed:
+    name: Migrate & seed
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm prisma migrate deploy
+
+      - name: Seed database
+        run: pnpm prisma db seed
