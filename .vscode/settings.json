@@ -97,5 +97,8 @@
     "package.json": "pnpm-lock.yaml, tsconfig.json, .eslintrc*, .prettierrc*, .gitignore, next.config.*, postcss.config.*, tailwind.config.*, vitest.config.*, playwright.config.*",
     "next.config.*": "postcss.config.*, tailwind.config.*, vitest.config.*",
     "tsconfig.json": "tsconfig.*.json"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
   }
 }
