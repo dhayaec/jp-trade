@@ -68,8 +68,24 @@ export function fetchSetups(symbol: string, timeframe: Timeframe): Promise<Tradi
   return getData<TradingSetup>('/api/setup', { symbol, timeframe });
 }
 
-export function fetchScreen(timeframe: Timeframe): Promise<ScreeningCandidate[]> {
-  return getData<ScreeningCandidate>('/api/screen', { timeframe, topN: 10, minScore: 0 });
+export interface ScreenParams {
+  timeframe: Timeframe;
+  topN?: number;
+  minScore?: number;
+  orbPeriod?: number;
+  volumeLookback?: number;
+}
+
+export function fetchScreen(params: ScreenParams): Promise<ScreeningCandidate[]> {
+  const { timeframe, topN, minScore, orbPeriod, volumeLookback } = params;
+  // Fresh literal so it's assignable to `Record<string, string | number | undefined>`.
+  return getData<ScreeningCandidate>('/api/screen', {
+    timeframe,
+    topN,
+    minScore,
+    orbPeriod,
+    volumeLookback,
+  });
 }
 
 export type TradeStatus = TradeResponse['status'];

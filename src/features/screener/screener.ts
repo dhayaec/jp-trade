@@ -33,10 +33,20 @@ export interface ScreeningOptions {
   volumeLookback?: number;
 }
 
+/** Per-component score breakdown (each 0–100 before weighting). */
+export interface ScoreBreakdown {
+  volume: number;
+  rsi: number;
+  pattern: number;
+  orb: number;
+}
+
 export interface ScreeningCandidate {
   symbol: string;
   /** 0–100 composite score; higher = more actionable setup. */
   score: number;
+  /** Per-component scores (0–100 each, pre-weight) for explainability. */
+  breakdown?: ScoreBreakdown;
   /** Last candle volume ÷ average volume over the lookback (excluding the last candle). */
   volumeRatio: number;
   /** RSI over the trailing window (see `calculateRSI`). */
@@ -102,24 +112,29 @@ function rsiScore(rsi: number): number {
  * - pattern confluence (20%) — detected patterns, capped at `PATTERN_COUNT_CAP`
  * - opening-range breakout (20%) — full marks when `isORB` is true
  *
- * @returns An integer in [0, 100].
+ * @returns `{ total, breakdown }` where `total` is the integer composite in
+ *          [0, 100] and `breakdown` holds each pre-weight component score.
  */
 export function scoreCandidate(
   volumeRatio: number,
   rsi: number,
   patternCount: number,
   isORB: boolean
-): number {
-  const volumeScore = clampComponent((volumeRatio / VOLUME_RATIO_CAP) * 100);
-  const patternScore = clampComponent((patternCount / PATTERN_COUNT_CAP) * 100);
+): { total: number; breakdown: ScoreBreakdown } {
+  const breakdown: ScoreBreakdown = {
+    volume: clampComponent((volumeRatio / VOLUME_RATIO_CAP) * 100),
+    rsi: rsiScore(rsi),
+    pattern: clampComponent((patternCount / PATTERN_COUNT_CAP) * 100),
+    orb: isORB ? 100 : 0,
+  };
 
   const raw =
-    volumeScore * WEIGHT_VOLUME +
-    rsiScore(rsi) * WEIGHT_RSI +
-    patternScore * WEIGHT_PATTERN +
-    (isORB ? 100 : 0) * WEIGHT_ORB;
+    breakdown.volume * WEIGHT_VOLUME +
+    breakdown.rsi * WEIGHT_RSI +
+    breakdown.pattern * WEIGHT_PATTERN +
+    breakdown.orb * WEIGHT_ORB;
 
-  return clampComponent(Math.round(raw));
+  return { total: clampComponent(Math.round(raw)), breakdown };
 }
 
 // ---------------------------------------------------------------------------
@@ -200,13 +215,14 @@ export function screenStocks(
     const volumeRatio = computeVolumeRatio(candles, volumeLookback);
     const rsi = calculateRSI(candles);
     const isORB = detectORB(candles, orbPeriod);
-    const score = scoreCandidate(volumeRatio, rsi, patterns.length, isORB);
+    const { total, breakdown } = scoreCandidate(volumeRatio, rsi, patterns.length, isORB);
 
-    if (score < minScore) continue;
+    if (total < minScore) continue;
 
     candidates.push({
       symbol,
-      score,
+      score: total,
+      breakdown,
       volumeRatio,
       rsi,
       patternCount: patterns.length,

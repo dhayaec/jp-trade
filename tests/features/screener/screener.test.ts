@@ -64,49 +64,80 @@ function bbbSeries(): Candle[] {
 // scoreCandidate
 // ---------------------------------------------------------------------------
 
+/** Return just the composite total from a `scoreCandidate` call. */
+function totalOf(...args: Parameters<typeof scoreCandidate>): number {
+  return scoreCandidate(...args).total;
+}
+
 describe('scoreCandidate', () => {
   it('scores 100 when every component is maximised', () => {
-    expect(scoreCandidate(3, 55, 3, true)).toBe(100);
-    expect(scoreCandidate(10, 55, 10, true)).toBe(100);
+    expect(totalOf(3, 55, 3, true)).toBe(100);
+    expect(totalOf(10, 55, 10, true)).toBe(100);
   });
 
   it('scores the weighted sum for a neutral profile', () => {
     // No volume, RSI 50 (full sweet-spot points), no patterns, no ORB.
-    expect(scoreCandidate(0, 50, 0, false)).toBe(30);
+    expect(totalOf(0, 50, 0, false)).toBe(30);
   });
 
   it('awards the full ORB weight when the breakout is present', () => {
-    expect(scoreCandidate(0, 50, 0, false)).toBe(30);
-    expect(scoreCandidate(0, 50, 0, true)).toBe(50);
+    expect(totalOf(0, 50, 0, false)).toBe(30);
+    expect(totalOf(0, 50, 0, true)).toBe(50);
   });
 
   it('caps volume ratio at the cap', () => {
-    expect(scoreCandidate(3, 55, 3, true)).toBe(100);
-    expect(scoreCandidate(6, 55, 3, true)).toBe(100);
+    expect(totalOf(3, 55, 3, true)).toBe(100);
+    expect(totalOf(6, 55, 3, true)).toBe(100);
   });
 
   it('caps pattern count at the cap', () => {
-    expect(scoreCandidate(3, 55, 3, true)).toBe(100);
-    expect(scoreCandidate(3, 55, 9, true)).toBe(100);
+    expect(totalOf(3, 55, 3, true)).toBe(100);
+    expect(totalOf(3, 55, 9, true)).toBe(100);
   });
 
   it('scores the RSI sweet spot boundaries and ramps', () => {
     // Plateau: 50 and 65 both earn full RSI points.
-    expect(scoreCandidate(0, 50, 0, false)).toBe(30);
-    expect(scoreCandidate(0, 65, 0, false)).toBe(30);
+    expect(totalOf(0, 50, 0, false)).toBe(30);
+    expect(totalOf(0, 65, 0, false)).toBe(30);
     // Floor and ceiling earn zero RSI points.
-    expect(scoreCandidate(0, 30, 0, false)).toBe(0);
-    expect(scoreCandidate(0, 80, 0, false)).toBe(0);
+    expect(totalOf(0, 30, 0, false)).toBe(0);
+    expect(totalOf(0, 80, 0, false)).toBe(0);
     // Ramps: half RSI points at the midpoint of each ramp.
-    expect(scoreCandidate(0, 40, 0, false)).toBe(15);
-    expect(scoreCandidate(0, 72.5, 0, false)).toBe(15);
+    expect(totalOf(0, 40, 0, false)).toBe(15);
+    expect(totalOf(0, 72.5, 0, false)).toBe(15);
     // Out of range is zero RSI points too.
-    expect(scoreCandidate(0, 20, 0, false)).toBe(0);
-    expect(scoreCandidate(0, 90, 0, false)).toBe(0);
+    expect(totalOf(0, 20, 0, false)).toBe(0);
+    expect(totalOf(0, 90, 0, false)).toBe(0);
   });
 
   it('clamps negative volume ratios to zero contribution', () => {
-    expect(scoreCandidate(-5, 30, 0, false)).toBe(0);
+    expect(totalOf(-5, 30, 0, false)).toBe(0);
+  });
+
+  it('exposes the per-component breakdown alongside the total', () => {
+    const { total, breakdown } = scoreCandidate(1.5, 60, 2, true);
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThanOrEqual(100);
+    // Each component is pre-weight and clamped to [0, 100].
+    expect(breakdown.volume).toBeCloseTo(50);
+    expect(breakdown.rsi).toBe(100);
+    expect(breakdown.pattern).toBeCloseTo((2 / 3) * 100);
+    expect(breakdown.orb).toBe(100);
+    // Weighted recomposition reproduces the total.
+    expect(
+      Math.round(
+        breakdown.volume * 0.3 + breakdown.rsi * 0.3 + breakdown.pattern * 0.2 + breakdown.orb * 0.2
+      )
+    ).toBe(total);
+  });
+
+  it('reports zero components on a dead profile', () => {
+    const { total, breakdown } = scoreCandidate(0, 50, 0, false);
+    expect(total).toBe(30);
+    expect(breakdown.volume).toBe(0);
+    expect(breakdown.rsi).toBe(100);
+    expect(breakdown.pattern).toBe(0);
+    expect(breakdown.orb).toBe(0);
   });
 });
 
