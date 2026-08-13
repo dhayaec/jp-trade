@@ -72,7 +72,7 @@ function DashboardPanel({ symbol, timeframe }: { symbol: string; timeframe: Time
     let cancelled = false;
 
     Promise.all([
-      fetchScreen(timeframe),
+      fetchScreen({ timeframe }),
       fetchCandles(symbol, timeframe),
       fetchPatterns(symbol, timeframe),
       fetchSetups(symbol, timeframe),

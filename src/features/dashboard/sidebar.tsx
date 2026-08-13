@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { History, LayoutDashboard, TrendingUp } from 'lucide-react';
+import { History, LayoutDashboard, ScanLine, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
+  { href: '/screener', label: 'Screener', icon: ScanLine },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/trade-log', label: 'Trade Log', icon: History },
 ];
