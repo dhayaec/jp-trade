@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { formatPrice, formatTimestamp } from './format';
 import { fetchTrades, type TradeStatus } from './api';
 import { Skeleton } from './skeleton';
+import { JournalStats } from './journal-stats';
 
 /**
  * Trade log with status tabs.  Fetched client-side so E2E can intercept via
@@ -30,13 +31,34 @@ type LoadState =
 
 export function TradeLog() {
   const [tab, setTab] = useState<TradeStatus>('OPEN');
+  const [allTrades, setAllTrades] = useState<TradeResponse[]>([]);
+
+  // Analytics need every trade regardless of the active tab filter, so we
+  // fetch all once and pass them to <JournalStats />. The tab-filtered list
+  // still comes from <TradeLogPanel /> for the table body.
+  useEffect(() => {
+    let cancelled = false;
+    fetchTrades('OPEN', { all: true, limit: 500 })
+      .then((trades) => {
+        if (!cancelled) setAllTrades(trades);
+      })
+      .catch(() => {
+        // Analytics are best-effort; a failure here must not break the table.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Trade Log</h1>
-        <p className="text-sm text-slate-500">Paper/live positions with P&L tracking.</p>
+        <p className="text-sm text-slate-500">Personal trading journal with P&L tracking.</p>
       </div>
+
+      {/* Journal analytics — computed from all logged trades */}
+      <JournalStats trades={allTrades} />
 
       {/* Status tabs */}
       <div className="flex gap-2">
