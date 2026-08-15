@@ -163,14 +163,14 @@ describe('screenStocks', () => {
   });
 
   it('derives volume ratio, ORB, patterns, and last close per symbol', () => {
-    const [aaa] = screenStocks({ AAA: aaaSeries() }, { minScore: 0 });
+    const [aaa] = screenStocks({ AAA: aaaSeries() }, { minScore: 0, minVolumeRatio: 0 });
     expect(aaa.volumeRatio).toBeCloseTo(6);
     expect(aaa.isORB).toBe(true);
     expect(aaa.patternCount).toBeGreaterThanOrEqual(1);
     expect(aaa.patterns).toContain('TSUTSUMI');
     expect(aaa.lastClose).toBe(106);
 
-    const [bbb] = screenStocks({ BBB: bbbSeries() }, { minScore: 0 });
+    const [bbb] = screenStocks({ BBB: bbbSeries() }, { minScore: 0, minVolumeRatio: 0 });
     expect(bbb.volumeRatio).toBeCloseTo(1);
     expect(bbb.isORB).toBe(false);
     expect(bbb.patternCount).toBe(0);
@@ -179,13 +179,16 @@ describe('screenStocks', () => {
   it('returns the top N candidates', () => {
     const result = screenStocks(
       { BBB: bbbSeries(), AAA: aaaSeries(), CCC: bbbSeries() },
-      { minScore: 0, topN: 2 }
+      { minScore: 0, topN: 2, minVolumeRatio: 0 }
     );
     expect(result.map((c) => c.symbol)).toEqual(['AAA', 'BBB']);
   });
 
   it('breaks equal-score ties alphabetically', () => {
-    const result = screenStocks({ ZZZ: bbbSeries(), AAA: bbbSeries() }, { minScore: 0 });
+    const result = screenStocks(
+      { ZZZ: bbbSeries(), AAA: bbbSeries() },
+      { minScore: 0, minVolumeRatio: 0 }
+    );
     expect(result.map((c) => c.symbol)).toEqual(['AAA', 'ZZZ']);
   });
 

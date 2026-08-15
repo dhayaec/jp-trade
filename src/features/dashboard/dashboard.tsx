@@ -8,6 +8,7 @@ import type { Timeframe } from '@/lib/constants';
 import { fetchCandles, fetchPatterns, fetchScreen, fetchSetups } from './api';
 import { CandlestickChart } from './candlestick-chart';
 import { Controls } from './controls';
+import { MarketOverview } from './market-overview';
 import { PatternCardList } from './pattern-card';
 import { ScreeningTable } from './screening-table';
 import { Skeleton } from './skeleton';
@@ -114,6 +115,9 @@ function DashboardPanel({ symbol, timeframe }: { symbol: string; timeframe: Time
 
       {state.status === 'ready' && (
         <>
+          {/* Market Overview (UI-PLAN §8) */}
+          <MarketOverview timeframe={timeframe} />
+
           {/* Price chart */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">

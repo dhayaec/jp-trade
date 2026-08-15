@@ -89,3 +89,21 @@ model StockSymbol {
 
   @@map("stock_symbols")
 }
+
+/// Historical score snapshots for sparkline / trend analysis
+model ScoreHistory {
+  id            String   @id @default(cuid())
+  symbol        String
+  timeframe     String   // "1m", "5m", "15m", "1h", "1d"
+  score         Int      // 0-100 composite score
+  confidence    Int      // 0-100 confidence
+  breakdown     Json?    // Store ScoreBreakdown as JSON
+  // What changed since last snapshot: "VOLUME", "RSI", "PATTERN", "ORB", "MULTIPLE"
+  changeReason  String?
+  // Magnitude of score change from previous snapshot
+  scoreDelta    Int?
+  timestamp     DateTime @default(now())
+
+  @@index([symbol, timeframe, timestamp(sort: Desc)])
+  @@map("score_history")
+}
