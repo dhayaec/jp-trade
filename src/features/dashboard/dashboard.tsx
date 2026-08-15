@@ -115,16 +115,16 @@ function DashboardPanel({ symbol, timeframe }: { symbol: string; timeframe: Time
 
       {state.status === 'ready' && (
         <>
-          {/* Market Overview (UI-PLAN §8) */}
-          <MarketOverview timeframe={timeframe} />
-
-          {/* Price chart */}
+          {/* Price chart - moved to top */}
           <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
               Price Action
             </h2>
             <CandlestickChart candles={state.candles} />
           </section>
+
+          {/* Market Overview (UI-PLAN §8) */}
+          <MarketOverview timeframe={timeframe} />
 
           {/* Patterns + Setups side-by-side */}
           <div className="grid gap-6 lg:grid-cols-2">
