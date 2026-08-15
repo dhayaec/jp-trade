@@ -19,6 +19,8 @@ export async function GET(request: NextRequest) {
   const { symbol, timeframe, limit, offset } = parsed.data;
 
   try {
+    // lightweight-charts requires ascending time order (oldest first).
+    // Fetch newest-first then reverse so the chart receives the correct order.
     const candles = await getPrisma().candle.findMany({
       where: { symbol, timeframe },
       orderBy: { timestamp: 'desc' },
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
       skip: offset,
     });
 
-    return NextResponse.json({ data: candles.map(serializeCandle) });
+    return NextResponse.json({ data: candles.map(serializeCandle).reverse() });
   } catch (error) {
     console.error('Failed to fetch candles:', error);
     return NextResponse.json({ error: 'Failed to fetch candles' }, { status: 500 });

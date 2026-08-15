@@ -173,7 +173,7 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('GET /api/candles', () => {
-  it('returns serialized candles newest-first', async () => {
+  it('returns serialized candles oldest-first (ascending) for lightweight-charts compatibility', async () => {
     const res = await candlesGET(makeRequest('http://localhost:3000/api/candles?symbol=TCS'));
     expect(res.status).toBe(200);
 
@@ -181,20 +181,20 @@ describe('GET /api/candles', () => {
     expect(body).toHaveProperty('data');
     expect(body.data).toEqual([
       {
-        timestamp: new Date('2026-08-01T00:00:00Z').getTime(),
-        open: 100,
-        high: 105,
-        low: 99,
-        close: 104,
-        volume: 1_000_000,
-      },
-      {
         timestamp: new Date('2026-07-31T00:00:00Z').getTime(),
         open: 99,
         high: 102,
         low: 98,
         close: 101,
         volume: 900_000,
+      },
+      {
+        timestamp: new Date('2026-08-01T00:00:00Z').getTime(),
+        open: 100,
+        high: 105,
+        low: 99,
+        close: 104,
+        volume: 1_000_000,
       },
     ]);
 
