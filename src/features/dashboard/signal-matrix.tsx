@@ -32,8 +32,8 @@ export function SignalMatrix({ candidates }: { candidates: readonly ScreeningCan
           {rows.map(({ label, cells }) => (
             <tr key={label} className="border-b border-slate-800/60 last:border-0">
               <td className="px-4 py-2 text-slate-300">{label}</td>
-              {cells.map((cell, i) => (
-                <td key={i} className="px-4 py-2 text-center">
+              {cells.map((cell) => (
+                <td key={cell.symbol} className="px-4 py-2 text-center">
                   <Cell cell={cell} />
                 </td>
               ))}
@@ -56,9 +56,13 @@ interface MatrixCell {
   title: string;
 }
 
-interface MatrixRow {
+interface MatrixCellWithSymbol extends MatrixCell {
+  symbol: string;
+}
+
+interface MatrixRowWithSymbol {
   label: string;
-  cells: MatrixCell[];
+  cells: MatrixCellWithSymbol[];
 }
 
 const CATEGORIES = [
@@ -101,13 +105,22 @@ const CATEGORIES = [
   },
 ] as const;
 
+interface MatrixCellWithSymbol extends MatrixCell {
+  symbol: string;
+}
+
+interface MatrixRowWithSymbol {
+  label: string;
+  cells: MatrixCellWithSymbol[];
+}
+
 function catMatrix(
   candidates: readonly ScreeningCandidate[],
   cat: (typeof CATEGORIES)[number]
-): MatrixRow {
+): MatrixRowWithSymbol {
   return {
     label: cat.label,
-    cells: candidates.map(cat.derive),
+    cells: candidates.map((c) => ({ ...cat.derive(c), symbol: c.symbol })),
   };
 }
 

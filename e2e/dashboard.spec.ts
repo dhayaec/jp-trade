@@ -124,8 +124,8 @@ test.describe('Dashboard', () => {
 
     // Screening table rows (scope to table cells — RELIANCE/TCS also appear in
     // the symbol `<option>` list and the header subtitle)
-    await expect(page.getByRole('cell', { name: 'RELIANCE' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'TCS' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'RELIANCE', exact: true })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'TCS', exact: true })).toBeVisible();
   });
 
   test('shows an error state when the API fails', async ({ page }) => {

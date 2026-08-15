@@ -300,7 +300,11 @@ describe('GET /api/screen', () => {
       )
     );
 
-    const res = await screenGET(makeRequest('http://localhost:3000/api/screen?minScore=0&topN=10'));
+    const res = await screenGET(
+      makeRequest(
+        'http://localhost:3000/api/screen?minScore=0&topN=10&minVolumeRatio=0.1&minRsi=0&maxRsi=100'
+      )
+    );
     expect(res.status).toBe(200);
 
     const body = await jsonResponse(res);

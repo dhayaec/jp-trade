@@ -50,10 +50,21 @@ export const setupQuerySchema = z.object({
 
 export const screenQuerySchema = z.object({
   timeframe: z.enum(TIMEFRAMES).default('1d'),
-  topN: z.coerce.number().int().min(1).max(100).default(10),
+  topN: z.coerce.number().int().min(1).max(100).default(25),
   minScore: z.coerce.number().min(0).max(100).default(60),
   orbPeriod: z.coerce.number().int().min(2).max(50).default(5),
   volumeLookback: z.coerce.number().int().min(2).max(100).default(20),
+  universe: z
+    .enum(['ALL', 'NSE500', 'NIFTY50', 'NIFTY_NEXT50', 'SECTOR', 'WATCHLIST'])
+    .default('ALL'),
+  sector: z.string().optional(),
+  minPrice: z.coerce.number().min(1).max(10000).default(50),
+  maxPrice: z.coerce.number().min(1).max(10000).default(5000),
+  minVolumeRatio: z.coerce.number().min(0.1).max(10).default(1.5),
+  minRsi: z.coerce.number().min(0).max(100).default(30),
+  maxRsi: z.coerce.number().min(0).max(100).default(70),
+  patterns: z.string().optional(), // comma-separated
+  strategies: z.string().optional(), // comma-separated
 });
 
 // ---------------------------------------------------------------------------
@@ -114,3 +125,31 @@ export type TradeQuery = z.infer<typeof tradeQuerySchema>;
 export type TradeCreate = z.infer<typeof tradeCreateSchema>;
 export type TradeUpdate = z.infer<typeof tradeUpdateSchema>;
 export type TradeClose = z.infer<typeof tradeCloseSchema>;
+
+// ---------------------------------------------------------------------------
+// GET /api/score-history — historical score snapshots
+// ---------------------------------------------------------------------------
+
+export const scoreHistoryQuerySchema = z.object({
+  symbol: symbolSchema,
+  timeframe: z.enum(TIMEFRAMES).default('5m'),
+  hours: z.coerce.number().int().min(1).max(168).default(24), // up to 1 week
+});
+
+export type ScoreHistoryQuery = z.infer<typeof scoreHistoryQuerySchema>;
+
+// ---------------------------------------------------------------------------
+// GET /api/signal-history — historical pattern/strategy signals
+// ---------------------------------------------------------------------------
+
+export const signalHistoryQuerySchema = z.object({
+  timeframe: z.enum(TIMEFRAMES).default('5m'),
+  hours: z.coerce.number().int().min(1).max(168).default(24), // up to 1 week
+  symbol: symbolSchema.optional(),
+  signal: z.enum(['BUY', 'SELL', 'NEUTRAL']).optional(),
+  pattern: symbolSchema.optional(),
+  strategy: symbolSchema.optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+export type SignalHistoryQuery = z.infer<typeof signalHistoryQuerySchema>;
