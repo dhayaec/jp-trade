@@ -403,17 +403,59 @@ export async function fetchCandidateDetail(
   symbol: string,
   timeframe: Timeframe
 ): Promise<CandidateDetail> {
-  const [screen, candles, patternSignals, setups] = await Promise.all([
-    fetchScreen({ timeframe, topN: 100, minScore: 0 }),
-    fetchCandles(symbol, timeframe),
-    fetchPatterns(symbol, timeframe),
-    fetchSetups(symbol, timeframe),
+  // First check if the symbol has candles in the requested timeframe.
+  // Some symbols (e.g. TITAN in the seeded universe) only have daily data —
+  // the intraday 5m series exists only for the most liquid names. Rather than
+  // failing the whole detail page, fall back to the daily timeframe so the
+  // evidence stack still renders.
+  const candles = await fetchCandles(symbol, timeframe);
+  const resolvedTimeframe: Timeframe = candles.length > 0 ? timeframe : '1d';
+  const resolvedCandles = candles.length > 0 ? candles : await fetchCandles(symbol, '1d');
+
+  const [screen, patternSignals, setups] = await Promise.all([
+    fetchScreen({
+      timeframe: resolvedTimeframe,
+      topN: 100,
+      minScore: 0,
+      minVolumeRatio: 0.1,
+      minRsi: 0,
+      maxRsi: 100,
+      minPrice: 1,
+      maxPrice: 10000,
+    }),
+    fetchPatterns(symbol, resolvedTimeframe),
+    fetchSetups(symbol, resolvedTimeframe),
   ]);
 
   const candidate = screen.find((c) => c.symbol === symbol);
 
   if (!candidate) {
-    throw new Error(`Candidate ${symbol} not found in screen results`);
+    // Symbol has candles but didn't pass screen filters - compute minimal detail from candles
+    // This can happen if the symbol's signals don't meet the screener thresholds
+    // We'll still show the chart and basic info
+    const last = resolvedCandles[resolvedCandles.length - 1];
+    const lastClose = last?.close ?? 0;
+    return {
+      symbol,
+      score: 0,
+      confidence: 0,
+      confidenceBreakdown: {
+        technicalAgreement: 0,
+        patternAgreement: 50,
+        strategyAgreement: 50,
+        overall: 0,
+      },
+      breakdown: { volume: 0, rsi: 0, pattern: 0, orb: 0 },
+      volumeRatio: 0,
+      rsi: 0,
+      patternCount: 0,
+      isORB: false,
+      patterns: [],
+      lastClose,
+      candles: resolvedCandles,
+      patternSignals,
+      setups,
+    };
   }
 
   const breakdown = candidate.breakdown ?? {
@@ -444,7 +486,7 @@ export async function fetchCandidateDetail(
     isORB: candidate.isORB,
     patterns: candidate.patterns,
     lastClose: candidate.lastClose,
-    candles,
+    candles: resolvedCandles,
     patternSignals,
     setups,
   };
