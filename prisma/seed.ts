@@ -27,13 +27,18 @@ import { NSE_UNIVERSE, type StockDefinition } from '@/lib/constants';
 // may be invoked directly (`pnpm tsx prisma/seed.ts`) outside the Prisma CLI.
 if (existsSync('.env')) process.loadEnvFile?.();
 
-/** Most liquid names get an intraday 5m series as well as 1d. */
+/** Most liquid names get intraday series (1m, 5m, 15m, 1h) as well as 1d. */
 const INTRADAY_SYMBOLS = ['RELIANCE', 'TCS'] as const;
 /** Business days of 1d candles to generate. */
 const DAILY_COUNT = 150;
-/** 5-minute slots in one NSE session (09:15–15:25). */
-const SESSION_SLOTS = 75;
-const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+/** Timeframe configs for intraday generation. */
+const INTRADAY_TIMEFRAMES: { tf: string; minutes: number }[] = [
+  { tf: '1m', minutes: 1 }, // 09:15–15:30 = 375 minutes
+  { tf: '5m', minutes: 5 }, // 75 five-minute bars
+  { tf: '15m', minutes: 15 }, // 25 fifteen-minute bars
+  { tf: '1h', minutes: 60 }, // 6 hourly bars
+];
 
 // ---------------------------------------------------------------------------
 // Deterministic PRNG + OHLCV generator (same seed → same candles)
@@ -80,8 +85,8 @@ function lastBusinessDays(count: number): Date[] {
   return days;
 }
 
-/** 5-minute slots of the most recent completed UTC business session (09:15+). */
-function lastSessionSlots(): Date[] {
+/** Session slots for a given minute interval of the most recent completed UTC business session (09:15+). */
+function lastSessionSlots(minutes: number): Date[] {
   const day = new Date();
   day.setUTCDate(day.getUTCDate() - 1);
   day.setUTCHours(0, 0, 0, 0, 0);
@@ -89,10 +94,9 @@ function lastSessionSlots(): Date[] {
     day.setUTCDate(day.getUTCDate() - 1);
   }
   const sessionStart = day.getTime() + (9 * 60 + 15) * 60 * 1000;
-  return Array.from(
-    { length: SESSION_SLOTS },
-    (_, i) => new Date(sessionStart + i * FIVE_MINUTES_MS)
-  );
+  const slotMs = minutes * 60 * 1000;
+  const slots = Math.floor(375 / minutes); // 375 minutes in session (09:15-15:30)
+  return Array.from({ length: slots }, (_, i) => new Date(sessionStart + i * slotMs));
 }
 
 interface SeedCandle {
@@ -156,14 +160,16 @@ async function main(): Promise<void> {
     });
   }
 
-  // 2. Candles — 1d for every symbol, 5m for the liquid pair.
+  // 2. Candles — 1d for every symbol, intraday (1m, 5m, 15m, 1h) for the liquid pair.
   const dailySlots = lastBusinessDays(DAILY_COUNT);
-  const sessionSlots = lastSessionSlots();
   const daily = NSE_UNIVERSE.map((stock: StockDefinition) =>
     generateCandles(stock.symbol, '1d', dailySlots, 120 + (hashSymbol(stock.symbol) % 1880))
   ).flat();
+
   const intraday = INTRADAY_SYMBOLS.flatMap((symbol) =>
-    generateCandles(symbol, '5m', sessionSlots, 120 + (hashSymbol(symbol) % 1880))
+    INTRADAY_TIMEFRAMES.flatMap(({ tf, minutes }) =>
+      generateCandles(symbol, tf, lastSessionSlots(minutes), 120 + (hashSymbol(symbol) % 1880))
+    )
   );
 
   const { count: insertedCandles } = await prisma.candle.createMany({

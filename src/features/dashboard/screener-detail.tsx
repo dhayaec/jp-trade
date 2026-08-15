@@ -81,19 +81,6 @@ export function ScreenerDetail({ symbol, timeframe }: { symbol: string; timefram
 
   return (
     <div className="space-y-6">
-      {/* Header with breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/screener"
-          className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
-        >
-          ← Back to Screener
-        </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">{timeframe}</span>
-        </div>
-      </div>
-
       {/* Main content */}
       {state.status === 'loading' && <DetailSkeleton />}
       {state.status === 'error' && (
