@@ -130,8 +130,39 @@ export function fetchScreen(params: ScreenParams): Promise<ScreeningCandidate[]>
 
 export type TradeStatus = TradeResponse['status'];
 
-export function fetchTrades(status: TradeStatus): Promise<TradeResponse[]> {
-  return getData<TradeResponse>('/api/trades', { status });
+export function fetchTrades(status: TradeStatus): Promise<TradeResponse[]>;
+export function fetchTrades(
+  status: TradeStatus,
+  options: { all?: boolean; limit?: number }
+): Promise<TradeResponse[]>;
+export function fetchTrades(
+  status: TradeStatus,
+  options: { all?: boolean; limit?: number } = {}
+): Promise<TradeResponse[]> {
+  const { all, limit } = options;
+  if (all) {
+    // Fetch every status and de-duplicate by id (a trade has exactly one
+    // status, so the union is already unique; the merge keeps the helper
+    // usable for analytics without a dedicated "all" endpoint).
+    return Promise.all(
+      (['OPEN', 'CLOSED', 'STOPPED'] as const).map((s) =>
+        getData<TradeResponse>('/api/trades', { status: s, limit: limit ?? 500 })
+      )
+    ).then((lists) => {
+      const seen = new Set<string>();
+      const merged: TradeResponse[] = [];
+      for (const list of lists) {
+        for (const t of list) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            merged.push(t);
+          }
+        }
+      }
+      return merged;
+    });
+  }
+  return getData<TradeResponse>('/api/trades', { status, limit });
 }
 
 // ---------------------------------------------------------------------------
